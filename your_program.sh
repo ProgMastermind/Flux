@@ -8,6 +8,9 @@
 
 set -e # Exit early if any commands fail
 
+# Source cargo environment
+. "$HOME/.cargo/env"
+
 # Copied from .codecrafters/compile.sh
 #
 # - Edit this to change how your program compiles locally
