@@ -63,25 +63,43 @@ fn main() {
                     continue;
                 }
 
-                // Parse correlation_id from request header (offset 8-11)
+                // Parse request header fields
                 // Request structure: message_size(0-3) + api_key(4-5) + api_version(6-7) + correlation_id(8-11)
+
+                // Parse request_api_version (offset 6-7, 2 bytes, INT16, big-endian)
+                let api_version_bytes = &buffer[6..8];
+                let request_api_version = i16::from_be_bytes(api_version_bytes.try_into().unwrap());
+
+                // Parse correlation_id (offset 8-11, 4 bytes, INT32, big-endian)
                 let correlation_id_bytes = &buffer[8..12];
                 let correlation_id = i32::from_be_bytes(correlation_id_bytes.try_into().unwrap());
 
-                println!("Received correlation_id: {}", correlation_id);
+                println!("Received correlation_id: {}, api_version: {}", correlation_id, request_api_version);
 
-                // Create response with correlation ID
-                // message_size: 32-bit signed integer (4 bytes, big-endian)
+                // Validate API version (broker supports versions 0-4)
+                // UNSUPPORTED_VERSION = 35, SUCCESS = 0
+                let error_code = if request_api_version >= 0 && request_api_version <= 4 {
+                    0i16  // SUCCESS
+                } else {
+                    35i16 // UNSUPPORTED_VERSION
+                };
+
+                println!("Response error_code: {}", error_code);
+
+                // Create ApiVersions response
+                // Response format: message_size(4) + correlation_id(4) + error_code(2)
                 let message_size: i32 = 0;
 
                 // Convert to big-endian bytes
                 let message_size_bytes = message_size.to_be_bytes();
                 let correlation_id_bytes = correlation_id.to_be_bytes();
+                let error_code_bytes = error_code.to_be_bytes();
 
                 // Combine into response buffer
                 let mut response = Vec::new();
                 response.extend_from_slice(&message_size_bytes);
                 response.extend_from_slice(&correlation_id_bytes);
+                response.extend_from_slice(&error_code_bytes);
 
                 // Send the response (no flush needed with Nagle's disabled)
                 match stream.write_all(&response) {
