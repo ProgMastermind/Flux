@@ -72,15 +72,16 @@ fn handle_client(mut stream: TcpStream) {
         // Create ApiVersions response according to the specified format
         // Response format:
         // message_size(4) + correlation_id(4) + error_code(2) + array_length(1) +
-        // api_version_1(2+2+2+1) + api_version_2(2+2+2+1) + api_version_3(2+2+2+1) +
+        // api_version_1(2+2+2+1) + api_version_2(2+2+2+1) + api_version_3(2+2+2+1) + api_version_4(2+2+2+1) +
         // throttle_time(4) + tag_buffer(1)
 
         // API Versions to return (API key 18 = API_VERSIONS)
         // API Version 1: API key 18, min version 0, max version 4
         // API Version 2: API key 1 (Fetch), min version 0, max version 16
         // API Version 3: API key 2 (Offsets), min version 0, max version 8
+        // API Version 4: API key 75, min version 0, max version 0
 
-        let array_length: u8 = 0x04; // varint for 3 API versions + 1
+        let array_length: u8 = 0x05; // varint for 4 API versions + 1
 
         // API Version entries
         let mut api_version_1 = Vec::new();
@@ -101,6 +102,12 @@ fn handle_client(mut stream: TcpStream) {
         api_version_3.extend_from_slice(&8i16.to_be_bytes());  // Max version 8
         api_version_3.extend_from_slice(&[0u8]);              // Tag buffer
 
+        let mut api_version_4 = Vec::new();
+        api_version_4.extend_from_slice(&75i16.to_be_bytes()); // API key 75 (DescribeTopicPartitions)
+        api_version_4.extend_from_slice(&0i16.to_be_bytes());  // Min version 0
+        api_version_4.extend_from_slice(&0i16.to_be_bytes());  // Max version 0
+        api_version_4.extend_from_slice(&[0u8]);              // Tag buffer
+
         let throttle_time: i32 = 0; // No throttling
 
         // Build response body
@@ -111,6 +118,7 @@ fn handle_client(mut stream: TcpStream) {
         response_body.extend_from_slice(&api_version_1);               // API version 1
         response_body.extend_from_slice(&api_version_2);               // API version 2
         response_body.extend_from_slice(&api_version_3);               // API version 3
+        response_body.extend_from_slice(&api_version_4);               // API version 4
         response_body.extend_from_slice(&throttle_time.to_be_bytes()); // throttle_time (4 bytes)
         response_body.extend_from_slice(&[0u8]);                       // tag_buffer (1 byte)
 
